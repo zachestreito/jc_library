@@ -1,34 +1,34 @@
-import os
+import sys, os
 from nbgrader.api import Gradebook
 
-# test cases
-# python3 -c "import jc_library; jc_library.add_students('~/testcourse/', ['bestreito','zestreito','gestreito'])"
-# python3 -c "import jc_library; jc_library.print_students('~/testcourse/')"
 
 # adds students to db after checking if student already exists or not
 # expects arg 2 to be an array of strings
 def add_students(course_dir, students):
-	__set_db_dir(course_dir)
-	try:
-		gradebook = Gradebook("sqlite:///gradebook.db")
-		for student in students:
-			gradebook.update_or_create_student(student)
-		gradebook.close()
-	except Exception as e:
-		print(e)
-	return
+	gradebook = __set_db(course_dir)
+	for student in students:
+		gradebook.update_or_create_student(student)
+	gradebook.close()
 
+# print list of students
 def print_students(course_dir):
-	__set_db_dir(course_dir)
-	try:
-		gradebook = Gradebook("sqlite:///gradebook.db")
-		print(gradebook.students)
-		gradebook.close()
-	except Exception as e:
-		print(e)
-	return
+	gradebook = __set_db(course_dir)
+	for student in gradebook.students:
+		print(student)
+	gradebook.close()
 
-def __set_db_dir(course_dir):
-	course_dir = os.path.expanduser(course_dir)
-	os.chdir(course_dir)
-	return
+# print list of assignments
+def print_assignments(course_dir):
+	gradebook = __set_db(course_dir)
+	for assignment in gradebook.assignments:
+		print(assignment)
+	gradebook.close()
+
+# set gradebook.db for internal use
+def __set_db(course_dir):
+	try:
+		course_dir = os.path.expanduser(course_dir) # this line accommodates for ~/ usage
+		os.chdir(course_dir) # set working directory
+		return Gradebook("sqlite:///gradebook.db")
+	except Exception as e:
+		sys.exit(e) # prints error and exits program
