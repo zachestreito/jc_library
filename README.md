@@ -1,2 +1,10 @@
 # jc_library
-A library for interfacing between jupyter and canvas
+
+### Usage
+* Work in progress
+
+
+### Example command line usage:
+```
+python3 -c "import jc_library; jc_library.print_students('/home/zach/testcourse/gradebook.db')"
+```
