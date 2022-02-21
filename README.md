@@ -6,5 +6,5 @@
 
 ### Example command line usage:
 ```
-python3 -c "import jc_library; jc_library.print_students('/home/zach/testcourse/gradebook.db')"
+python3 -c "import jc_library; jc_library.print_students('~/testcourse/')"
 ```
