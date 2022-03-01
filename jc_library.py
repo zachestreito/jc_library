@@ -27,15 +27,21 @@ def __set_course(course_id):
 ########## PRIVATE NBGRADER FUNCTIONS ##########
 
 # DEBUGGING FUNCTION to print nbgrader db student list
-def __nb_print_students(course_dir):
+def __nb_print_students():
 	gradebook = __set_db()
+	print("\n---nbgrader Student List---")
 	for student in gradebook.students:
-		print(student)
+		print("%s - %s %s - %s" %(
+			student.id,
+			student.first_name,
+			student.last_name,
+			student.email
+			))
 	gradebook.close()
 
 
 # DEBUGGING FUNCTION to print nbgrader db assignment list
-def __nb_print_assignments(course_dir):
+def __nb_print_assignments():
 	gradebook = __set_db()
 	for assignment in gradebook.assignments:
 		print(assignment)
@@ -43,7 +49,7 @@ def __nb_print_assignments(course_dir):
 
 
 # INCOMPLETE returns a 2d array in the format of assignment_array[string studentID, float grade]
-def __nb_get_assignment_grades(course_dir, assignment):
+def __nb_get_assignment_grades(assignment):
 	gradebook = __set_db()
 	exporter = ExportPlugin(gradebook)
 	try:
@@ -54,21 +60,26 @@ def __nb_get_assignment_grades(course_dir, assignment):
 	return # finish this
 
 
-# adds students to local nbgrader db after checking if student already exists or not
-# expects arg 2 to be an array of string NetIDs
-def __nb_add_students(course_dir, students):
+# adds students to db, or updates existing entries
+# expects arg 1 to be an array of string NetIDs
+def __nb_add_students(students):
 	gradebook = __set_db()
 	for student in students:
 		try:
-			gradebook.add_student(student)
+			gradebook.update_or_create_student(
+				student.login_id,
+				first_name = student.name.split()[0],
+				last_name = student.name.split()[1],
+				email = student.email
+				)
 		except Exception as e:
 			print("%s (%s)" % (e, student))
 	gradebook.close()
 
 
 # removes student from local nbgrader db
-# expects arg 2 to be student ID as string
-def __nb_remove_student(course_dir, student):
+# expects arg 1 to be student ID as string
+def __nb_remove_student(student):
 	gradebook = __set_db()
 	try:
 		gradebook.remove_student(student)
@@ -81,13 +92,13 @@ def __nb_remove_student(course_dir, student):
 
 # return Canvas student list
 def __c_get_students():
-	return course.get_users(enrollment_type = ['student'])
+	return course.get_users(enrollment_type = ['student'], sort = 'username')
 
 # DEBUGGING FUNCTION to print canvas course student list
 def __c_print_students():
-	print("\n---%s Student List---" % course)
-	for i in course.get_users(enrollment_type = ['student']):
-		print(i)
+	print("\n---%s Canvas Student List---" % course)
+	for i in __c_get_students():
+		print("%s - %s" % (i.login_id, i.name))
 
 # return Canvas assignment list
 def __c_get_assignments():
@@ -95,8 +106,8 @@ def __c_get_assignments():
 
 # DEBUGGING FUNCTION to print canvas course assignment list
 def __c_print_assignments():
-	print("\n---%s Assignment List---" % course)
-	for i in course.get_assignments():
+	print("\n---%s Canvas Assignment List---" % course)
+	for i in __c_get_assignments():
 		print(i)
 
 # Create new assignment within canvas
@@ -104,6 +115,14 @@ def __c_create_assignment(assignment_name):
 	course.create_assignment({
 		'name': assignment_name
 	})
+
+
+########## PUBLIC COMBINED FUNCTIONS ##########
+
+# INCOMPLETE update gradebook.db with student list from Canvas
+def import_students():
+	students = __c_get_students()
+	__nb_add_students(students)
 
 
 ############################################################################
@@ -120,13 +139,13 @@ course = __set_course(int(config['Canvas']['COURSE_ID']))
 course_dir = config['nbgrader']['COURSE_DIRECTORY']
 course_dir = os.path.expanduser(course_dir) # this line accommodates for ~/ usage
 os.chdir(course_dir) # set working directory
-loader = PyFileConfigLoader(filename = "nbgrader_config.py")
-#loader.filename = "nbgrader_config.py"
-nbconfig = loader.load_config()
+config_loader = PyFileConfigLoader(filename = "nbgrader_config.py")
+nbconfig = config_loader.load_config()
 nb_api = NbGraderAPI(config = nbconfig)
 
 
 ### TESTING ZONE
-#__c_create_assignment('ps1')
-__c_print_students()
-__c_print_assignments()
+#__c_print_students()
+#__c_print_assignments()
+import_students()
+__nb_print_students()
