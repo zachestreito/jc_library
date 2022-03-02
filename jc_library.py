@@ -112,11 +112,23 @@ def __c_print_assignments():
 
 # Create new assignment within Canvas
 def __c_create_assignment(assignment_name, points, hub_url):
+	if __c_check_assignment(assignment_name):
+		print('Error: Canvas assignment "%s" already exists' % assignment_name)
+		return
 	course.create_assignment({
 		"name": assignment_name,
 		"points_possible": points,
 		"description": '<a href="%s">%s</a>' % (hub_url, assignment_name)
 	})
+	print('Canvas assignment "%s" created successfully' % assignment_name)
+
+# Check if assignment exists within Canvas
+def __c_check_assignment(assignment_name):
+	assignments = course.get_assignments()
+	for assignment in assignments:
+		if assignment.name == assignment_name:
+			return True
+	return False
 
 
 ########## PUBLIC COMBINED FUNCTIONS ##########
