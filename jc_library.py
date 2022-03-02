@@ -92,9 +92,9 @@ def __nb_remove_student(student):
 
 # return Canvas student list
 def __c_get_students():
-	return course.get_users(enrollment_type = ['student'], sort = 'username')
+	return course.get_users(enrollment_type = ["student"], sort = "username")
 
-# DEBUGGING FUNCTION to print canvas course student list
+# DEBUGGING FUNCTION to print Canvas course student list
 def __c_print_students():
 	print("\n---%s Canvas Student List---" % course)
 	for i in __c_get_students():
@@ -104,39 +104,45 @@ def __c_print_students():
 def __c_get_assignments():
 	return course.get_assignments()
 
-# DEBUGGING FUNCTION to print canvas course assignment list
+# DEBUGGING FUNCTION to print Canvas course assignment list
 def __c_print_assignments():
 	print("\n---%s Canvas Assignment List---" % course)
 	for i in __c_get_assignments():
 		print(i)
 
-# Create new assignment within canvas
-def __c_create_assignment(assignment_name):
+# Create new assignment within Canvas
+def __c_create_assignment(assignment_name, points, hub_url):
 	course.create_assignment({
-		'name': assignment_name
+		"name": assignment_name,
+		"points_possible": points,
+		"description": '<a href="%s">%s</a>' % (hub_url, assignment_name)
 	})
 
 
 ########## PUBLIC COMBINED FUNCTIONS ##########
 
-# INCOMPLETE update gradebook.db with student list from Canvas
+# updates gradebook.db with student list from Canvas
 def import_students():
 	students = __c_get_students()
 	__nb_add_students(students)
+
+# INCOMPLETE - publishes assignment grades from gradebook.db to Canvas
+def publish_grades(assignment_name):
+	return
 
 
 ############################################################################
 
 # Initialize config
 config = configparser.ConfigParser()
-config.read('config.ini')
+config.read("config.ini")
 
 # Initialize Canvas objects
-canvas = Canvas(config['Canvas']['API_URL'], config['Canvas']['API_KEY'])
-course = __set_course(int(config['Canvas']['COURSE_ID']))
+canvas = Canvas(config["Canvas"]["API_URL"], config["Canvas"]["API_KEY"])
+course = __set_course(int(config["Canvas"]["COURSE_ID"]))
 
 # Initialize nbgrader objects
-course_dir = config['nbgrader']['COURSE_DIRECTORY']
+course_dir = config["nbgrader"]["COURSE_DIRECTORY"]
 course_dir = os.path.expanduser(course_dir) # this line accommodates for ~/ usage
 os.chdir(course_dir) # set working directory
 config_loader = PyFileConfigLoader(filename = "nbgrader_config.py")
@@ -147,5 +153,6 @@ nb_api = NbGraderAPI(config = nbconfig)
 ### TESTING ZONE
 #__c_print_students()
 #__c_print_assignments()
-import_students()
-__nb_print_students()
+#import_students()
+#__nb_print_students()
+__c_create_assignment("ps1", 10, "http://example.com")
