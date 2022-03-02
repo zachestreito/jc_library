@@ -24,12 +24,12 @@ def __set_course(course_id):
 		sys.exit(e) # prints error and exits program
 
 
-########## PRIVATE NBGRADER FUNCTIONS ##########
+########## PRIVATE GRADEBOOK FUNCTIONS ##########
 
-# DEBUGGING FUNCTION to print nbgrader db student list
-def __nb_print_students():
+# DEBUGGING FUNCTION to print gradebook student list
+def __db_print_students():
 	gradebook = __set_db()
-	print("\n---nbgrader Student List---")
+	print("\n---Gradebook Student List---")
 	for student in gradebook.students:
 		print("%s - %s %s - %s" %(
 			student.id,
@@ -40,29 +40,9 @@ def __nb_print_students():
 	gradebook.close()
 
 
-# DEBUGGING FUNCTION to print nbgrader db assignment list
-def __nb_print_assignments():
-	gradebook = __set_db()
-	for assignment in gradebook.assignments:
-		print(assignment)
-	gradebook.close()
-
-
-# INCOMPLETE returns a 2d array in the format of assignment_array[string studentID, float grade]
-def __nb_get_assignment_grades(assignment):
-	gradebook = __set_db()
-	exporter = ExportPlugin(gradebook)
-	try:
-		print("")
-	except Exception as e:
-		print(e)
-	gradebook.close()
-	return # finish this
-
-
-# adds students to db, or updates existing entries
+# adds students to gradebook, or updates existing entries
 # expects arg 1 to be an array of string NetIDs
-def __nb_add_students(students):
+def __db_add_students(students):
 	gradebook = __set_db()
 	for student in students:
 		try:
@@ -77,15 +57,98 @@ def __nb_add_students(students):
 	gradebook.close()
 
 
-# removes student from local nbgrader db
+# removes student from local gradebook
 # expects arg 1 to be student ID as string
-def __nb_remove_student(student):
+def __db_remove_student(student):
 	gradebook = __set_db()
 	try:
 		gradebook.remove_student(student)
 	except Exception as e:
 		print(e)
+	finally:
+		gradebook.close()
+
+
+# Add assignment to gradebook
+def __db_create_assignment(assignment_name):
+	gradebook = __set_db()
+	try:
+		gradebook.add_assignment(assignment_name)
+		print('Gradebook assignment "%s" created successfully' % assignment_name)
+		return True
+	except Exception as e:
+		print(e)
+		print('Error: Gradebook assignment "%s" already exists' % assignment_name)
+		return False
+	finally:
+		gradebook.close()
+
+
+# Check if assignment exists within gradebook
+def __db_check_assignment(assignment_name):
+	gradebook = __set_db()
+	for assignment in gradebook.assignments:
+		if assignment.name == assignment_name:
+			return True
+	return False
 	gradebook.close()
+
+
+# Print db assignment list
+def __db_print_assignments():
+	gradebook = __set_db()
+	print("\n---%s Gradebook Assignment List---" % os.getcwd().split('/')[-1])
+	for assignment in gradebook.assignments:
+		print(assignment.name)
+	gradebook.close()
+
+
+# Remove assignment from gradebook
+def __db_remove_assignment(assignment_name):
+	gradebook = __set_db()
+	try:
+		gradebook.remove_assignment(assignment_name)
+		print('Gradebook assignment "%s" deleted successfully' % assignment_name)
+		return True
+	except Exception as e:
+		print(e)
+		print('Gradebook assignment "%s" does not exist or cannot be deleted' % assignment_name)
+		return False
+	finally:
+		gradebook.close()
+
+
+########## PRIVATE NBGRADER FUNCTIONS ##########
+
+# DEBUGGING FUNCTION to print nbgrader source folder assignment list
+def __nb_print_assignments():
+	print("\n---%s nbgrader Assignment List---" % os.getcwd().split('/')[-1])
+	for assignment in nb_api.get_source_assignments():
+		print(assignment)
+
+
+# creates an nbgrader assignment
+def __nb_create_assignment(assignment_name):
+	try:
+		os.mkdir("%ssource/%s" % (course_dir, assignment_name))
+		print('nbgrader assignment "%s" created successfully' % assignment_name)
+		return True
+	except Exception as e:
+		print(e)
+		print('Error: nbgrader assignment "%s" already exists' % assignment_name)
+		return False
+
+# NOTICE: Will only delete empty assignment folders
+# Assignments containing notebooks must be deleted manually
+def __nb_remove_assignment(assignment_name):
+	try:
+		os.rmdir("%ssource/%s" % (course_dir, assignment_name))
+		print('nbgrader assignment "%s" deleted successfully' % assignment_name)
+		return True
+	except Exception as e:
+		print(e)
+		print("Error: nbgrader assignment folder contains files and must be deleted manually")
+		return False
 
 
 ########## PRIVATE CANVAS FUNCTIONS ##########
@@ -94,15 +157,18 @@ def __nb_remove_student(student):
 def __c_get_students():
 	return course.get_users(enrollment_type = ["student"], sort = "username")
 
+
 # DEBUGGING FUNCTION to print Canvas course student list
 def __c_print_students():
 	print("\n---%s Canvas Student List---" % course)
 	for i in __c_get_students():
 		print("%s - %s" % (i.login_id, i.name))
 
+
 # return Canvas assignment list
 def __c_get_assignments():
 	return course.get_assignments()
+
 
 # DEBUGGING FUNCTION to print Canvas course assignment list
 def __c_print_assignments():
@@ -110,33 +176,64 @@ def __c_print_assignments():
 	for i in __c_get_assignments():
 		print(i)
 
+
 # Create new assignment within Canvas
-def __c_create_assignment(assignment_name, points, hub_url):
-	if __c_check_assignment(assignment_name):
+def __c_create_assignment(assignment_name, hub_url):
+	if __c_check_assignment(assignment_name) != False:
 		print('Error: Canvas assignment "%s" already exists' % assignment_name)
-		return
+		return False
 	course.create_assignment({
 		"name": assignment_name,
-		"points_possible": points,
 		"description": '<a href="%s">%s</a>' % (hub_url, assignment_name)
 	})
 	print('Canvas assignment "%s" created successfully' % assignment_name)
+	return True
+
+def __c_remove_assignment(assignment_name):
+	assignment = __c_check_assignment(assignment_name)
+	if assignment != False:
+		assignment.delete()
+		print('Canvas assignment "%s" deleted successfully' % assignment_name)
+	else:
+		print('Canvas assignment "%s" does not exist or cannot be deleted' % assignment_name)
+
 
 # Check if assignment exists within Canvas
 def __c_check_assignment(assignment_name):
 	assignments = course.get_assignments()
 	for assignment in assignments:
 		if assignment.name == assignment_name:
-			return True
+			return assignment
 	return False
 
 
 ########## PUBLIC COMBINED FUNCTIONS ##########
 
+# Prints assignments from Canvas, Gradebook, and nbgrader
+def print_assignments():
+	__c_print_assignments()
+	__db_print_assignments()
+	__nb_print_assignments()
+
+
 # updates gradebook.db with student list from Canvas
 def import_students():
 	students = __c_get_students()
-	__nb_add_students(students)
+	__db_add_students(students)
+
+
+# Creates an assignment on Canvas, Gradebook, and nbgrader
+def create_assignment(assignment_name, hub_url):
+	__c_create_assignment(assignment_name, hub_url)
+	__nb_create_assignment(assignment_name)
+	__db_create_assignment(assignment_name)
+
+
+def remove_assignment(assignment_name):
+	__c_remove_assignment(assignment_name)
+	__nb_remove_assignment(assignment_name)
+	__db_remove_assignment(assignment_name)
+
 
 # INCOMPLETE - publishes assignment grades from gradebook.db to Canvas
 def publish_grades(assignment_name):
@@ -163,8 +260,6 @@ nb_api = NbGraderAPI(config = nbconfig)
 
 
 ### TESTING ZONE
-#__c_print_students()
-#__c_print_assignments()
-#import_students()
-#__nb_print_students()
-__c_create_assignment("ps1", 10, "http://example.com")
+#create_assignment("ps2", "http://example.com")
+remove_assignment("ps2")
+print_assignments()
