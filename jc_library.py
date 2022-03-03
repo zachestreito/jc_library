@@ -131,7 +131,7 @@ def __nb_print_assignments():
 # creates an nbgrader assignment
 def __nb_create_assignment(assignment_name):
 	try:
-		os.mkdir("%ssource/%s" % (course_dir, assignment_name))
+		os.makedirs("%ssource/%s" % (course_dir, assignment_name))
 		print('nbgrader assignment "%s" created successfully' % assignment_name)
 		return True
 	except Exception as e:
