@@ -92,20 +92,6 @@ def __db_remove_student(student):
 		gradebook.close()
 
 
-# Add assignment to gradebook
-def __db_create_assignment(assignment_name):
-	gradebook = __set_db()
-	try:
-		gradebook.add_assignment(assignment_name)
-		print('Gradebook assignment "%s" created successfully' % assignment_name)
-		return True
-	except Exception as e:
-		print("Gradebook Error: %s" % e)
-		return False
-	finally:
-		gradebook.close()
-
-
 # Check if assignment exists within gradebook
 def __db_check_assignment(assignment_name):
 	gradebook = __set_db()
@@ -122,8 +108,28 @@ def __db_print_assignments():
 	print("---%s Gradebook Assignment List---" % os.getcwd().split('/')[-1])
 	for assignment in gradebook.assignments:
 		print(assignment.name)
+		print(assignment.id)
 	print()
 	gradebook.close()
+
+
+# Add assignment to gradebook
+def __db_create_assignment(assignment_name, canvas_assignment_name):
+	gradebook = __set_db()
+	canvas_assignment = __c_check_assignment(canvas_assignment_name)
+	if canvas_assignment:
+		try:
+			gradebook.add_assignment(assignment_name)
+			gradebook.update_or_create_assignment(assignment_name, id = canvas_assignment.id)
+			print('Gradebook assignment "%s" created successfully' % assignment_name)
+			return True
+		except Exception as e:
+			print("Gradebook Error: %s" % e)
+			return False
+		finally:
+			gradebook.close()
+	else:
+		print("Gradebook Error: Cannot find %s on Canvas" % assignment_name)
 
 
 # Remove assignment from gradebook
@@ -250,15 +256,19 @@ def import_students():
 
 # Creates an assignment on Canvas, Gradebook, and nbgrader
 def create_assignment(assignment_name, url):
+	sanitized_assignment_name = ''.join(filter(str.isalnum, assignment_name))
 	__c_create_assignment(assignment_name, url)
-	__nb_create_assignment(assignment_name)
-	__db_create_assignment(assignment_name)
+	#time.sleep(1)
+	__nb_create_assignment(sanitized_assignment_name)
+	#time.sleep(1)
+	__db_create_assignment(sanitized_assignment_name, assignment_name)
 
 
 def remove_assignment(assignment_name):
+	sanitized_assignment_name = ''.join(filter(str.isalnum, assignment_name))
 	__c_remove_assignment(assignment_name)
-	__nb_remove_assignment(assignment_name)
-	__db_remove_assignment(assignment_name)
+	__nb_remove_assignment(sanitized_assignment_name)
+	__db_remove_assignment(sanitized_assignment_name)
 
 
 # INCOMPLETE - publishes assignment grades from gradebook.db to Canvas
@@ -279,6 +289,8 @@ course = __set_course(int(config["Canvas"]["COURSE_ID"]))
 
 # Initialize nbgrader objects
 course_dir = config["nbgrader"]["COURSE_DIRECTORY"]
+if " " in course_dir: # Verify there are no spaces in course name
+	sys.exit("Error: Course name cannot contain spaces or special characters")
 course_dir = os.path.expanduser(course_dir) # this line accommodates for ~/ usage
 __create_course(course_dir)
 config_loader = PyFileConfigLoader(filename = "nbgrader_config.py")
@@ -287,11 +299,3 @@ nb_api = NbGraderAPI(config = nbconfig)
 
 
 ### TESTING ZONE
-#import_students()
-#__db_remove_student("zach")
-#__c_print_students()
-#__db_print_students()
-#create_assignment("Assignment 1", "http://example.com")
-#remove_assignment("Assignment 1")
-#print_assignments()
-#print(nb_api.get_submissions("ps1"))
