@@ -1,9 +1,11 @@
 import sys, os, configparser
+from os.path import exists
 from traitlets.config.loader import PyFileConfigLoader
 from nbgrader.api import Gradebook
 from nbgrader.plugins.export import ExportPlugin
 from nbgrader.apps import NbGraderAPI
 from canvasapi import Canvas
+
 
 
 ########## INITIALIZATION FUNCTIONS ##########
@@ -22,6 +24,26 @@ def __set_course(course_id):
 		return canvas.get_course(course_id)
 	except Exception as e:
 		sys.exit(e) # prints error and exits program
+
+
+# creates required course directories if they do not exist
+def __create_course(course_dir):
+	try:
+		os.makedirs("%ssource" % course_dir)
+	except:
+		pass
+	finally:
+		os.chdir(course_dir) # set working directory
+		course_id = os.getcwd().split('/')[-1]
+		lines = ['c = get_config()\n\n', 'c.CourseDirectory.course_id = "%s"\n\n' % course_id]
+		if not exists("%snbgrader_config.py" % course_dir):
+			os.system("nbgrader generate_config --quiet")
+			with open("%snbgrader_config.py" % course_dir, 'r') as file:
+				default_config = file.read()
+			with open("%snbgrader_config.py" % course_dir, 'w') as file:
+				file.writelines(lines)
+			with open("%snbgrader_config.py" % course_dir, 'a') as file:
+				file.write(default_config)
 
 
 ########## PRIVATE GRADEBOOK FUNCTIONS ##########
@@ -118,6 +140,7 @@ def __db_remove_assignment(assignment_name):
 		gradebook.close()
 
 
+
 ########## PRIVATE NBGRADER FUNCTIONS ##########
 
 # DEBUGGING FUNCTION to print nbgrader source folder assignment list
@@ -148,6 +171,7 @@ def __nb_remove_assignment(assignment_name):
 	except Exception as e:
 		print("nbgrader Error: %s" % e)
 		return False
+
 
 
 ########## PRIVATE CANVAS FUNCTIONS ##########
@@ -208,7 +232,8 @@ def __c_check_assignment(assignment_name):
 	return False
 
 
-########## PUBLIC COMBINED FUNCTIONS ##########
+
+########## PUBLIC FUNCTIONS ##########
 
 # Prints assignments from Canvas, Gradebook, and nbgrader
 def print_assignments():
@@ -241,6 +266,7 @@ def publish_grades(assignment_name):
 	return
 
 
+
 ############################################################################
 
 # Initialize config
@@ -254,7 +280,7 @@ course = __set_course(int(config["Canvas"]["COURSE_ID"]))
 # Initialize nbgrader objects
 course_dir = config["nbgrader"]["COURSE_DIRECTORY"]
 course_dir = os.path.expanduser(course_dir) # this line accommodates for ~/ usage
-os.chdir(course_dir) # set working directory
+__create_course(course_dir)
 config_loader = PyFileConfigLoader(filename = "nbgrader_config.py")
 nbconfig = config_loader.load_config()
 nb_api = NbGraderAPI(config = nbconfig)
