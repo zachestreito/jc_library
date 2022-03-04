@@ -1,4 +1,4 @@
-jc_library is a library for interfacing between Jupyter and Canvas, with support for nbgrader
+nb_canvas is a library for interfacing between Jupyter's nbgrader and Canvas
 
 ## Usage
 * Work in progress
