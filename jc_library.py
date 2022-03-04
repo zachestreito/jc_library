@@ -146,6 +146,17 @@ def __db_remove_assignment(assignment_name):
 		gradebook.close()
 
 
+# Return score and max_score from student submission
+def __db_get_student_score(assignment_name, student_id):
+	gradebook = __set_db()
+	try:
+		score = gradebook.find_submission(assignment_name, student_id).score
+		max_score = gradebook.find_submission(assignment_name, student_id).max_score
+		grade = [score, max_score]
+		return grade
+	except Exception as e:
+		print("Gradebook Error: %s" % e)
+
 
 ########## PRIVATE NBGRADER FUNCTIONS ##########
 
