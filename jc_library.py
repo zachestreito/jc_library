@@ -146,14 +146,13 @@ def __db_remove_assignment(assignment_name):
 		gradebook.close()
 
 
-# Return score and max_score from student submission
+# Return score from student submission
 def __db_get_student_score(assignment_name, student_id):
 	gradebook = __set_db()
 	try:
 		score = gradebook.find_submission(assignment_name, student_id).score
-		max_score = gradebook.find_submission(assignment_name, student_id).max_score
-		grade = [score, max_score]
-		return grade
+		#max_score = gradebook.find_submission(assignment_name, student_id).max_score
+		return score
 	except Exception as e:
 		print("Gradebook Error: %s" % e)
 
@@ -198,11 +197,20 @@ def __c_get_students():
 	return course.get_users(enrollment_type = ["student"], sort = "username")
 
 
+# Return internal Canvas id of student (note: this is not the login_id)
+def __c_get_student_internal_id(student_id):
+	students = __c_get_students()
+	for student in students:
+		if student.login_id == student_id:
+			return student.id
+
+
 # DEBUGGING FUNCTION to print Canvas course student list
 def __c_print_students():
 	print("---%s Canvas Student List---" % course)
-	for i in __c_get_students():
-		print("%s - %s" % (i.login_id, i.name))
+	for student in __c_get_students():
+		print(vars(student))
+		print("%s - %s" % (student.login_id, student.name))
 	print()
 
 
@@ -231,6 +239,8 @@ def __c_create_assignment(assignment_name, url):
 	print('Canvas assignment "%s" created successfully' % assignment_name)
 	return True
 
+
+# Remove an assignment from Canvas
 def __c_remove_assignment(assignment_name):
 	assignment = __c_check_assignment(assignment_name)
 	if assignment != False:
@@ -247,6 +257,14 @@ def __c_check_assignment(assignment_name):
 		if assignment.name == assignment_name:
 			return assignment
 	return False
+
+
+# Post Gradebook grade to Canvas
+def __c_publish_grade(assignment_name, student_name, grade):
+	assignment = __c_check_assignment(assignment_name)
+	student_internal_id =__c_get_student_internal_id(student_name)
+	submission = assignment.get_submission(student_internal_id)
+	submission.edit(submission = {"posted_grade" : grade})
 
 
 
@@ -287,7 +305,6 @@ def publish_grades(assignment_name):
 	return
 
 
-
 ############################################################################
 
 # Initialize config
@@ -310,3 +327,5 @@ nb_api = NbGraderAPI(config = nbconfig)
 
 
 ### TESTING ZONE
+#__c_publish_grade("Assignment1", "vle", 11)
+#__c_print_students()
