@@ -360,7 +360,12 @@ gradebook = __set_db()
 
 
 ### TESTING ZONE
-
+#__c_create_assignment("Assignment1", "http://example.com")
+#__c_post_grade("Assignment1", "vle", 5)
+#__c_print_students()
+#__c_create_assignment("Assignment1", "http://example.com")
+remove_assignment("Assignment1")
+#post_grades("Assignment1")
 
 
 
