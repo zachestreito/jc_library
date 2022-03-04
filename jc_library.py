@@ -46,6 +46,7 @@ def __create_course(course_dir):
 				file.write(default_config)
 
 
+
 ########## PRIVATE GRADEBOOK FUNCTIONS ##########
 
 # DEBUGGING FUNCTION to print gradebook student list
@@ -151,10 +152,26 @@ def __db_get_student_score(assignment_name, student_id):
 	gradebook = __set_db()
 	try:
 		score = gradebook.find_submission(assignment_name, student_id).score
-		#max_score = gradebook.find_submission(assignment_name, student_id).max_score
 		return score
 	except Exception as e:
 		print("Gradebook Error: %s" % e)
+	finally:
+		gradebook.close()
+
+def __db_get_assignment_max_score(assignment_name):
+	gradebook = __set_db()
+	try:
+		submissions = gradebook.assignment_submissions(assignment_name)
+		max_score = 0
+		for submission in submissions:
+			if submission.max_score > max_score:
+				max_score = submission.max_score
+		return max_score
+	except Exception as e:
+		print("Gradebook Error: %s" % e)
+	finally:
+		gradebook.close()
+
 
 
 ########## PRIVATE NBGRADER FUNCTIONS ##########
@@ -176,6 +193,7 @@ def __nb_create_assignment(assignment_name):
 	except Exception as e:
 		print("nbgrader Error: %s" % e)
 		return False
+
 
 # NOTICE: Will only delete empty assignment folders
 # Assignments containing notebooks must be deleted manually
@@ -232,12 +250,16 @@ def __c_create_assignment(assignment_name, url):
 	if __c_check_assignment(assignment_name) != False:
 		print('Canvas Error: Assignment "%s" already exists' % assignment_name)
 		return False
-	course.create_assignment({
-		"name": assignment_name,
-		"description": '<a href="%s">%s</a>' % (url, assignment_name)
-	})
-	print('Canvas assignment "%s" created successfully' % assignment_name)
-	return True
+	try:
+		course.create_assignment({
+			"name": assignment_name,
+			"description": '<a href="%s">%s</a>' % (url, assignment_name)
+		})
+		print('Canvas assignment "%s" created successfully' % assignment_name)
+		return True
+	except Exception as e:
+		print("Canvas Error: %s" % e)
+		return False
 
 
 # Remove an assignment from Canvas
@@ -259,9 +281,35 @@ def __c_check_assignment(assignment_name):
 	return False
 
 
-# Post Gradebook grade to Canvas
-def __c_publish_grade(assignment_name, student_name, grade):
+# Update max score of Canvas assignment
+def __c_update_assignment_max_score(assignment_name, max_score):
 	assignment = __c_check_assignment(assignment_name)
+	try:
+		assignment.edit(assignment = {"points_possible" : max_score})
+	except Exception as e:
+		print(e)
+
+
+# Make assignment visible to students on Canvas
+def __c_publish_assignment(assignment_name):
+	assignment = __c_check_assignment(assignment_name)
+	try:
+		assignment.edit(assignment = {"published" : True})
+	except Exception as e:
+		print(e)
+
+
+# Post Gradebook grade to Canvas
+def __c_post_grade(assignment_name, student_name, grade):
+	assignment = __c_check_assignment(assignment_name)
+	# First check if max possible_points has been updated
+	db_max = int(__db_get_assignment_max_score(assignment_name))
+	if db_max != assignment.points_possible:
+		print("Notice: Updating max possible points for Canvas assignment")
+		__c_update_assignment_max_score(assignment_name, db_max)
+	# Next, verify that the assignment has been published
+	if not assignment.published:
+		__c_publish_assignment(assignment_name)
 	student_internal_id =__c_get_student_internal_id(student_name)
 	submission = assignment.get_submission(student_internal_id)
 	submission.edit(submission = {"posted_grade" : grade})
@@ -287,9 +335,7 @@ def import_students():
 def create_assignment(assignment_name, url):
 	sanitized_assignment_name = ''.join(filter(str.isalnum, assignment_name))
 	__c_create_assignment(assignment_name, url)
-	#time.sleep(1)
 	__nb_create_assignment(sanitized_assignment_name)
-	#time.sleep(1)
 	__db_create_assignment(sanitized_assignment_name, assignment_name)
 
 
@@ -327,5 +373,3 @@ nb_api = NbGraderAPI(config = nbconfig)
 
 
 ### TESTING ZONE
-#__c_publish_grade("Assignment1", "vle", 11)
-#__c_print_students()
