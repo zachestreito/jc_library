@@ -51,7 +51,6 @@ def __create_course(course_dir):
 
 # DEBUGGING FUNCTION to print gradebook student list
 def __db_print_students():
-	gradebook = __set_db()
 	print("---Gradebook Student List---")
 	for student in gradebook.students:
 		print("%s - %s %s - %s" %(
@@ -61,13 +60,11 @@ def __db_print_students():
 			student.email
 			))
 	print()
-	gradebook.close()
 
 
 # adds students to gradebook, or updates existing entries
 # expects arg 1 to be an array of string NetIDs
 def __db_add_students(students):
-	gradebook = __set_db()
 	for student in students:
 		try:
 			gradebook.update_or_create_student(
@@ -78,45 +75,36 @@ def __db_add_students(students):
 				)
 		except Exception as e:
 			print("%s (%s)" % (e, student))
-	gradebook.close()
 
 
 # removes student from local gradebook
 # expects arg 1 to be student ID as string
 def __db_remove_student(student):
-	gradebook = __set_db()
 	try:
 		gradebook.remove_student(student)
 	except Exception as e:
 		print(e)
-	finally:
-		gradebook.close()
 
 
-# Check if assignment exists within gradebook
+# Check if assignment exists within gradebook and return it if found
 def __db_check_assignment(assignment_name):
-	gradebook = __set_db()
 	for assignment in gradebook.assignments:
 		if assignment.name == assignment_name:
 			return True
 	return False
-	gradebook.close()
 
 
 # Print db assignment list
 def __db_print_assignments():
-	gradebook = __set_db()
 	print("---%s Gradebook Assignment List---" % os.getcwd().split('/')[-1])
 	for assignment in gradebook.assignments:
 		print(assignment.name)
 		print(assignment.id)
 	print()
-	gradebook.close()
 
 
 # Add assignment to gradebook
 def __db_create_assignment(assignment_name, canvas_assignment_name):
-	gradebook = __set_db()
 	canvas_assignment = __c_check_assignment(canvas_assignment_name)
 	if canvas_assignment:
 		try:
@@ -127,15 +115,12 @@ def __db_create_assignment(assignment_name, canvas_assignment_name):
 		except Exception as e:
 			print("Gradebook Error: %s" % e)
 			return False
-		finally:
-			gradebook.close()
 	else:
 		print("Gradebook Error: Cannot find %s on Canvas" % assignment_name)
 
 
 # Remove assignment from gradebook
 def __db_remove_assignment(assignment_name):
-	gradebook = __set_db()
 	try:
 		gradebook.remove_assignment(assignment_name)
 		print('Gradebook assignment "%s" deleted successfully' % assignment_name)
@@ -143,23 +128,15 @@ def __db_remove_assignment(assignment_name):
 	except Exception as e:
 		print("Gradebook Error: %s" % e)
 		return False
-	finally:
-		gradebook.close()
 
 
 # Return score from student submission
-def __db_get_student_score(assignment_name, student_id):
-	gradebook = __set_db()
-	try:
-		score = gradebook.find_submission(assignment_name, student_id).score
-		return score
-	except Exception as e:
-		print("Gradebook Error: %s" % e)
-	finally:
-		gradebook.close()
+def __db_get_submission_score(submission):
+	score = submission.score
+	return score
+
 
 def __db_get_assignment_max_score(assignment_name):
-	gradebook = __set_db()
 	try:
 		submissions = gradebook.assignment_submissions(assignment_name)
 		max_score = 0
@@ -169,8 +146,12 @@ def __db_get_assignment_max_score(assignment_name):
 		return max_score
 	except Exception as e:
 		print("Gradebook Error: %s" % e)
-	finally:
-		gradebook.close()
+
+
+def __db_get_assignment_submissions(assignment_name):
+	submissions = gradebook.assignment_submissions(assignment_name)
+	s = submissions
+	return s
 
 
 
@@ -347,7 +328,10 @@ def remove_assignment(assignment_name):
 
 
 # INCOMPLETE - publishes assignment grades from gradebook.db to Canvas
-def publish_grades(assignment_name):
+def post_grades(assignment_name):
+	submissions = __db_get_assignment_submissions(assignment_name)
+	for submission in submissions:
+		__c_post_grade(assignment_name, submission.student_id, submission.score)
 	return
 
 
@@ -371,5 +355,14 @@ config_loader = PyFileConfigLoader(filename = "nbgrader_config.py")
 nbconfig = config_loader.load_config()
 nb_api = NbGraderAPI(config = nbconfig)
 
+# Initialize Gradebook
+gradebook = __set_db()
+
 
 ### TESTING ZONE
+
+
+
+
+# Close Gradebook
+gradebook.close()
