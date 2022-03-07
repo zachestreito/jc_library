@@ -188,6 +188,16 @@ def __nb_remove_assignment(assignment_name):
 		return False
 
 
+# Get and return feedback files for submissions
+def __nb_get_feedback_files(student_name, assignment_name):
+	feedback_files = (os.listdir("%sfeedback/%s/%s/" % (course_dir, student_name, assignment_name)))
+	for i in range(len(feedback_files)):
+		if not feedback_files[i].endswith('.html'):
+			feedback_files[i] = None # purge non-html files from feedback list
+	feedback_files = list(filter(None, feedback_files)) # remove all null elements
+	return feedback_files
+
+
 
 ########## PRIVATE CANVAS FUNCTIONS ##########
 
@@ -285,15 +295,33 @@ def __c_post_grade(assignment_name, student_name, grade):
 	assignment = __c_check_assignment(assignment_name)
 	# First check if max possible_points has been updated
 	db_max = int(__db_get_assignment_max_score(assignment_name))
+	if not assignment:
+		print("Canvas Error: Cannot find %s" % assignment_name)
+		return False
 	if db_max != assignment.points_possible:
 		print("Notice: Updating max possible points for Canvas assignment")
 		__c_update_assignment_max_score(assignment_name, db_max)
-	# Next, verify that the assignment has been published
+	submission = __c_get_submission(assignment_name, student_name)
+	submission.edit(submission = {"posted_grade" : grade})
+
+
+# Post assignment feedback to Canvas
+def __c_post_feedback(assignment_name, student_name):
+	submission = __c_get_submission(assignment_name, student_name)
+	# get feedback html files
+	feedback_files = __nb_get_feedback_files(student_name, assignment_name)
+	for feedback in feedback_files:
+		submission.upload_comment("%sfeedback/vle/Assignment1/%s" % (course_dir, feedback))
+
+
+# Get student's assignment submission from Canvas
+def __c_get_submission(assignment_name, student_name):
+	assignment = __c_check_assignment(assignment_name)
+	# Verify that assignment has been published
 	if not assignment.published:
 		__c_publish_assignment(assignment_name)
-	student_internal_id =__c_get_student_internal_id(student_name)
-	submission = assignment.get_submission(student_internal_id)
-	submission.edit(submission = {"posted_grade" : grade})
+	student_internal_id = __c_get_student_internal_id(student_name)
+	return assignment.get_submission(student_internal_id)
 
 
 
@@ -327,11 +355,14 @@ def remove_assignment(assignment_name):
 	__db_remove_assignment(sanitized_assignment_name)
 
 
-# INCOMPLETE - publishes assignment grades from gradebook.db to Canvas
+# publishes assignment grades AND feedback to Canvas
 def post_grades(assignment_name):
-	submissions = __db_get_assignment_submissions(assignment_name)
-	for submission in submissions:
-		__c_post_grade(assignment_name, submission.student_id, submission.score)
+	db_submissions = __db_get_assignment_submissions(assignment_name)
+	print("Posting grades and feedback for:")
+	for db_submission in db_submissions:
+		print(db_submission.student_id)
+		__c_post_grade(assignment_name, db_submission.student_id, db_submission.score)
+		__c_post_feedback(assignment_name, db_submission.student_id)
 	return
 
 
@@ -360,13 +391,7 @@ gradebook = __set_db()
 
 
 ### TESTING ZONE
-#__c_create_assignment("Assignment1", "http://example.com")
-#__c_post_grade("Assignment1", "vle", 5)
-#__c_print_students()
-#__c_create_assignment("Assignment1", "http://example.com")
-remove_assignment("Assignment1")
-#post_grades("Assignment1")
-
+post_grades("Assignment1")
 
 
 # Close Gradebook
