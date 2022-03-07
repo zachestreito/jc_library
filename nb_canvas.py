@@ -1,4 +1,4 @@
-import sys, os, configparser
+import sys, os, configparser, shutil
 from os.path import exists
 from traitlets.config.loader import PyFileConfigLoader
 from nbgrader.api import Gradebook
@@ -186,16 +186,29 @@ def __nb_remove_assignment(assignment_name):
 	except Exception as e:
 		print("nbgrader Error: %s" % e)
 		return False
+	finally:
+		nb_api.unrelease(assignment_name)
+		shutil.rmtree("%srelease/%s" % (course_dir, assignment_name), ignore_errors=True)
+		for student in os.listdir("%ssubmitted/" % (course_dir)):
+			shutil.rmtree("%ssubmitted/%s/%s" % (course_dir, student, assignment_name), ignore_errors=True)
+		for student in os.listdir("%sautograded/" % (course_dir)):
+			shutil.rmtree("%sautograded/%s/%s" % (course_dir, student, assignment_name), ignore_errors=True)
+		for student in os.listdir("%sfeedback/" % (course_dir)):
+			shutil.rmtree("%sfeedback/%s/%s" % (course_dir, student, assignment_name), ignore_errors=True)
+		#shutil.rmtree("%sautograded/%s" % (course_dir, assignment_name))
+		#shutil.rmtree("%ssubmitted/%s" % (course_dir, assignment_name))
+		#shutil.rmtree("%sfeedback/%s" % (course_dir, assignment_name))
 
 
 # Get and return feedback files for submissions
 def __nb_get_feedback_files(student_name, assignment_name):
-	feedback_files = (os.listdir("%sfeedback/%s/%s/" % (course_dir, student_name, assignment_name)))
-	for i in range(len(feedback_files)):
-		if not feedback_files[i].endswith('.html'):
-			feedback_files[i] = None # purge non-html files from feedback list
-	feedback_files = list(filter(None, feedback_files)) # remove all null elements
-	return feedback_files
+	if exists("%sfeedback/%s/%s/" % (course_dir, student_name, assignment_name)):
+		feedback_files = (os.listdir("%sfeedback/%s/%s/" % (course_dir, student_name, assignment_name)))
+		for i in range(len(feedback_files)):
+			if not feedback_files[i].endswith('.html'):
+				feedback_files[i] = None # purge non-html files from feedback list
+		feedback_files = list(filter(None, feedback_files)) # remove all null elements
+		return feedback_files
 
 
 
@@ -301,6 +314,7 @@ def __c_post_grade(assignment_name, student_name, grade):
 	if db_max != assignment.points_possible:
 		print("Notice: Updating max possible points for Canvas assignment")
 		__c_update_assignment_max_score(assignment_name, db_max)
+	print("Grading: %s" % student_name)
 	submission = __c_get_submission(assignment_name, student_name)
 	submission.edit(submission = {"posted_grade" : grade})
 
@@ -310,8 +324,9 @@ def __c_post_feedback(assignment_name, student_name):
 	submission = __c_get_submission(assignment_name, student_name)
 	# get feedback html files
 	feedback_files = __nb_get_feedback_files(student_name, assignment_name)
-	for feedback in feedback_files:
-		submission.upload_comment("%sfeedback/vle/Assignment1/%s" % (course_dir, feedback))
+	if feedback_files:
+		for feedback in feedback_files:
+			submission.upload_comment("%sfeedback/vle/Assignment1/%s" % (course_dir, feedback))
 
 
 # Get student's assignment submission from Canvas
@@ -355,12 +370,16 @@ def remove_assignment(assignment_name):
 	__db_remove_assignment(sanitized_assignment_name)
 
 
+def publish_assignment(assignment_name):
+	nb_api.generate_assignment(assignment_name)
+	nb_api.release(assignment_name)
+	__c_publish_assignment(assignment_name)
+
+
 # publishes assignment grades AND feedback to Canvas
 def post_grades(assignment_name):
 	db_submissions = __db_get_assignment_submissions(assignment_name)
-	print("Posting grades and feedback for:")
 	for db_submission in db_submissions:
-		print(db_submission.student_id)
 		__c_post_grade(assignment_name, db_submission.student_id, db_submission.score)
 		__c_post_feedback(assignment_name, db_submission.student_id)
 	return
@@ -391,7 +410,11 @@ gradebook = __set_db()
 
 
 ### TESTING ZONE
-post_grades("Assignment1")
+remove_assignment("Assignment1")
+#create_assignment("Assignment1", "http://example.com")
+#publish_assignment("Assignment1")
+#post_grades("Assignment1")
+#print(__nb_get_feedback_files("vle", "Assignment1"))
 
 
 # Close Gradebook
