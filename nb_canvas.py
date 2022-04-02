@@ -189,12 +189,15 @@ def __nb_remove_assignment(assignment_name):
 	finally:
 		nb_api.unrelease(assignment_name)
 		shutil.rmtree("%srelease/%s" % (course_dir, assignment_name), ignore_errors=True)
-		for student in os.listdir("%ssubmitted/" % (course_dir)):
-			shutil.rmtree("%ssubmitted/%s/%s" % (course_dir, student, assignment_name), ignore_errors=True)
-		for student in os.listdir("%sautograded/" % (course_dir)):
-			shutil.rmtree("%sautograded/%s/%s" % (course_dir, student, assignment_name), ignore_errors=True)
-		for student in os.listdir("%sfeedback/" % (course_dir)):
-			shutil.rmtree("%sfeedback/%s/%s" % (course_dir, student, assignment_name), ignore_errors=True)
+		if os.path.exists("%ssubmitted/" % (course_dir)):
+			for student in os.listdir("%ssubmitted/" % (course_dir)):
+				shutil.rmtree("%ssubmitted/%s/%s" % (course_dir, student, assignment_name), ignore_errors=True)
+		if os.path.exists("%sautograded/" % (course_dir)):
+			for student in os.listdir("%sautograded/" % (course_dir)):
+				shutil.rmtree("%sautograded/%s/%s" % (course_dir, student, assignment_name), ignore_errors=True)
+		if os.path.exists("%sfeedback/" % (course_dir)):
+			for student in os.listdir("%sfeedback/" % (course_dir)):
+				shutil.rmtree("%sfeedback/%s/%s" % (course_dir, student, assignment_name), ignore_errors=True)
 		#shutil.rmtree("%sautograded/%s" % (course_dir, assignment_name))
 		#shutil.rmtree("%ssubmitted/%s" % (course_dir, assignment_name))
 		#shutil.rmtree("%sfeedback/%s" % (course_dir, assignment_name))
@@ -410,7 +413,7 @@ gradebook = __set_db()
 
 
 ### TESTING ZONE
-remove_assignment("Assignment1")
+#remove_assignment("Assignment1")
 #create_assignment("Assignment1", "http://example.com")
 #publish_assignment("Assignment1")
 #post_grades("Assignment1")
