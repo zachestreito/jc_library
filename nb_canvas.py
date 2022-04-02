@@ -253,17 +253,27 @@ def __c_print_assignments():
 
 
 # Create new assignment within Canvas
-def __c_create_assignment(assignment_name, url):
+def __c_create_assignment(assignment_name, *args):
 	if __c_check_assignment(assignment_name) != False:
 		print('Canvas Error: Assignment "%s" already exists' % assignment_name)
 		return False
 	try:
-		course.create_assignment({
-			"name": assignment_name,
-			"description": '<a href="%s">%s</a>' % (url, assignment_name)
-		})
-		print('Canvas assignment "%s" created successfully' % assignment_name)
-		return True
+		if len(args) == 0:
+			course.create_assignment({
+				"name": assignment_name
+			})
+			print('Canvas assignment "%s" created successfully' % assignment_name)
+			return True
+		elif len(args) == 1:
+			course.create_assignment({
+				"name": assignment_name,
+				"description": '<a href="%s">%s</a>' % (args[0], assignment_name)
+			})
+			print('Canvas assignment "%s" created successfully' % assignment_name)
+			return True
+		else:
+			print("Incorrect number of arguments in __c_create_assignment()")
+			return False
 	except Exception as e:
 		print("Canvas Error: %s" % e)
 		return False
@@ -359,9 +369,15 @@ def import_students():
 
 
 # Creates an assignment on Canvas, Gradebook, and nbgrader
-def create_assignment(assignment_name, url):
+def create_assignment(assignment_name, *args):
 	sanitized_assignment_name = ''.join(filter(str.isalnum, assignment_name))
-	__c_create_assignment(assignment_name, url)
+	if len(args) == 0:
+		__c_create_assignment(assignment_name)
+	elif len(args) == 1:
+		__c_create_assignment(assignment_name, args[0])
+	else:
+		print("Incorrect number of args in create_assignment()")
+		return False
 	__nb_create_assignment(sanitized_assignment_name)
 	__db_create_assignment(sanitized_assignment_name, assignment_name)
 
@@ -414,7 +430,7 @@ gradebook = __set_db()
 
 ### TESTING ZONE
 #remove_assignment("Assignment1")
-#create_assignment("Assignment1", "http://example.com")
+#create_assignment("Assignment1")
 #publish_assignment("Assignment1")
 #post_grades("Assignment1")
 #print(__nb_get_feedback_files("vle", "Assignment1"))
