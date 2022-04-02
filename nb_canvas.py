@@ -391,7 +391,7 @@ def remove_assignment(assignment_name):
 
 def publish_assignment(assignment_name):
 	nb_api.generate_assignment(assignment_name)
-	nb_api.release(assignment_name)
+	nb_api.release_assignment(assignment_name)
 	__c_publish_assignment(assignment_name)
 
 
