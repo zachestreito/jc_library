@@ -339,7 +339,7 @@ def __c_post_feedback(assignment_name, student_name):
 	feedback_files = __nb_get_feedback_files(student_name, assignment_name)
 	if feedback_files:
 		for feedback in feedback_files:
-			submission.upload_comment("%sfeedback/vle/Assignment1/%s" % (course_dir, feedback))
+			submission.upload_comment("%sfeedback/vle/%s/%s" % (course_dir, assignment_name, feedback))
 
 
 # Get student's assignment submission from Canvas
