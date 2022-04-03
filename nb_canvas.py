@@ -408,7 +408,7 @@ def post_grades(assignment_name):
 
 # Initialize config
 config = configparser.ConfigParser()
-config.read("config.ini")
+config.read(os.path.join(os.path.dirname(__file__), "config.ini"))
 
 # Initialize Canvas objects
 canvas = Canvas(config["Canvas"]["API_URL"], config["Canvas"]["API_KEY"])
