@@ -35,7 +35,19 @@ def __create_course(course_dir):
 	finally:
 		os.chdir(course_dir) # set working directory
 		course_id = os.getcwd().split('/')[-1]
-		lines = ['c = get_config()\n\n', 'c.CourseDirectory.course_id = "%s"\n\n' % course_id]
+		lines = [
+			'c = get_config()\n\n',
+			'c.CourseDirectory.course_id = "%s"\n\n' % course_id,
+			'c.ClearSolutions.begin_solution_delimeter = "BEGIN MY SOLUTION"\n',
+			'c.ClearSolutions.end_solution_delimeter = "END MY SOLUTION"\n',
+			'c.ClearSolutions.code_stub = {\n',
+			'	"python": "# your code here\\nraise NotImplementedError",\n',
+			'	"C#": "// your code here",\n',
+			'	"C++11": "// your code here",\n',
+			'	"C++14": "// your code here",\n',
+			'	"C++17": "// your code here"\n',
+			'}\n'
+		]
 		if not exists("%snbgrader_config.py" % course_dir):
 			os.system("nbgrader generate_config --quiet")
 			with open("%snbgrader_config.py" % course_dir, 'r') as file:
